@@ -1,0 +1,6 @@
+{"id": "remind-basic", "intent": "reminder", "input": "напомни завтра в 9 позвонить врачу", "expect_tool": "add_reminder", "expect_fields": {"fire_at": "tomorrow 09:00", "text": "позвонить врачу"}}
+{"id": "event-add", "intent": "schedule", "input": "в пятницу в 15:00 встреча с командой", "expect_tool": "add_event", "expect_fields": {"title": "встреча с командой"}}
+{"id": "task-add", "intent": "task", "input": "добавь задачу: дочитать отчёт по SLM", "expect_tool": "add_task", "expect_fields": {"title": "дочитать отчёт по SLM"}}
+{"id": "memory-recall", "intent": "memory", "input": "какой у меня принтер?", "expect_tool": "search_memory", "expect_fields": {}}
+{"id": "web-fresh", "intent": "websearch", "input": "какая сегодня погода в Москве?", "expect_tool": "web_search", "expect_fields": {}}
+{"id": "chitchat", "intent": "chat", "input": "спасибо, отлично!", "expect_tool": null, "expect_fields": {}}

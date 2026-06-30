@@ -1,0 +1,41 @@
+[project]
+name = "local-assistant"
+version = "0.0.0"
+description = "Fully-local, privacy-first AI secretary on Raspberry Pi 5, over Telegram."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "ArtemIvanchenko" }]
+dependencies = [
+    "python-telegram-bot[job-queue]>=21.0",
+    "ollama>=0.3",
+    "apscheduler>=3.10",
+    "sqlite-vec>=0.1",
+    "httpx>=0.27",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0",
+    "pypdf>=4.0",
+    "python-docx>=1.1",
+    "ddgs>=6.0",
+    "mcp>=1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.4", "mypy>=1.9", "detect-secrets>=1.5"]
+voice = ["faster-whisper>=1.0"]   # phase 10
+
+[project.scripts]
+local-assistant = "local_assistant.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

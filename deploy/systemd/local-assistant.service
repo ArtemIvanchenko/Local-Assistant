@@ -1,0 +1,23 @@
+# Template — copy to /etc/systemd/system/, adjust User/paths, then:
+#   sudo systemctl daemon-reload && sudo systemctl enable --now local-assistant
+[Unit]
+Description=Local Assistant (Telegram AI secretary)
+After=network-online.target ollama.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/Local-Assistant
+EnvironmentFile=/home/pi/Local-Assistant/.env
+ExecStart=/home/pi/Local-Assistant/.venv/bin/python -m local_assistant
+Restart=always
+RestartSec=5
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/pi/Local-Assistant/data /home/pi/Local-Assistant/backups
+
+[Install]
+WantedBy=multi-user.target

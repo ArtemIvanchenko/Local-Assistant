@@ -1,0 +1,56 @@
+# ─────────────────────────────────────────────────────────────
+# Local Assistant — PERSONAL DATA NEVER LEAVES THE PI
+# This repo is PUBLIC. Anything below stays on-device only.
+# ─────────────────────────────────────────────────────────────
+
+# Secrets
+.env
+*.env
+!.env.example
+*.key
+*.pem
+secrets/
+
+# Runtime data — the assistant's "brain"
+# (root-anchored so they don't match the src/local_assistant/memory/ package)
+/data/
+/backups/
+/memory/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+MEMORY.md
+/docs/inbox/        # user-forwarded documents for RAG
+
+# Models / weights
+*.gguf
+*.bin
+models/
+
+# Logs / observability
+*.log
+logs/
+metrics.jsonl
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
