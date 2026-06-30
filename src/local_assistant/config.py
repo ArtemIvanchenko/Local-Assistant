@@ -6,7 +6,6 @@ can be tuned without touching code (see plan: "всё в одном конфиг
 
 from __future__ import annotations
 
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

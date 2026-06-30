@@ -61,13 +61,31 @@ pip install -e .
 # 3. Config
 cp .env.example .env        # fill in TELEGRAM_BOT_TOKEN + OWNER_CHAT_IDS
 
-# 4. Run
+# 4. Sanity-check config + model availability, then run
+python -m local_assistant --check
 python -m local_assistant
 ```
 
+## Choosing a model
+
+Model choice is first-class — nothing is hard-coded and **no weights live in this repo**
+(they're pulled by Ollama).
+
+- **At install:** set `MODEL_MAIN` / `MODEL_ROUTER` / `MODEL_EMBED` in `.env`.
+- **At runtime, from Telegram:**
+  - `/models` — see the curated catalogue (main / router / embed), which are installed
+    (✅) vs need `ollama pull` (⬇️), and which is active (⭐).
+  - `/model <name>` — switch the active main model instantly (persists across restarts).
+
+The catalogue lives in [`src/local_assistant/llm/models.py`](src/local_assistant/llm/models.py)
+(Qwen3.5-4B, Qwen3-4B-Instruct, Phi-4-mini, Gemma 3, Llama 3.2, …). Any model installed
+in Ollama can be selected, listed or not.
+
 ## Roadmap
 
-Implementation is phased — see [`docs/roadmap.md`](docs/roadmap.md). Current status: **Phase 0 — scaffold**.
+Implementation is phased — see [`docs/roadmap.md`](docs/roadmap.md). Status: **functional MVP**
+(chat, memory, schedule, tools, proactivity, model selection). Hardware tuning is done when
+you set up the Pi.
 
 ## License
 
