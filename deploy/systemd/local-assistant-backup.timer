@@ -1,0 +1,11 @@
+# Nightly encrypted backup. Enable with:
+#   sudo systemctl enable --now local-assistant-backup.timer
+[Unit]
+Description=Nightly Local Assistant backup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

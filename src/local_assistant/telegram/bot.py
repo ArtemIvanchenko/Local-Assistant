@@ -8,12 +8,14 @@ switches the active main model at runtime.
 from __future__ import annotations
 
 import tempfile
+import time
 from pathlib import Path
 
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ChatAction
 from telegram.ext import (
     Application,
+    CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
     MessageHandler,
@@ -22,6 +24,9 @@ from telegram.ext import (
 
 from ..config import settings
 from ..llm.models import by_role, find
+from ..util import now
+
+EDIT_INTERVAL = 0.8  # seconds between Telegram message edits while streaming
 
 
 def build_application(deps) -> Application:
@@ -164,16 +169,54 @@ def build_application(deps) -> Application:
             except Exception as e:
                 await update.message.reply_text(f"Не смог разобрать файл: {e}")
 
-    # ── free-form text → agent ───────────────────────────────
+    # ── reminder snooze buttons ──────────────────────────────
+    async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+        q = update.callback_query
+        if not (q.from_user and q.from_user.id in settings.owner_ids):
+            await q.answer()
+            return
+        await q.answer()
+        try:
+            _, rid, action = q.data.split(":")
+            rid = int(rid)
+        except Exception:
+            return
+        if action == "done":
+            deps.db.execute("UPDATE reminders SET status='done' WHERE id=?", (rid,))
+            await q.edit_message_text(f"✓ {q.message.text.lstrip('⏰ ')}")
+            return
+        minutes = {"15": 15, "60": 60, "1440": 1440}.get(action, 15)
+        from datetime import timedelta
+        new_fire = now() + timedelta(minutes=minutes)
+        deps.db.execute(
+            "UPDATE reminders SET status='pending', fire_at=? WHERE id=?",
+            (new_fire.isoformat(), rid),
+        )
+        await q.edit_message_text(
+            f"⏰ отложено до {new_fire.strftime('%H:%M')} — {q.message.text.lstrip('⏰ ')}"
+        )
+
+    # ── free-form text → agent (streamed) ────────────────────
     async def on_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         if not await guard(update):
             return
         await ctx.bot.send_chat_action(update.effective_chat.id, ChatAction.TYPING)
+        sent = await update.message.reply_text("…")
+        shown, partial, last_edit = "", "", 0.0
         try:
-            answer = await deps.orchestrator.handle(update.message.text)
+            async for partial in deps.orchestrator.handle_stream(update.message.text):
+                t = time.monotonic()
+                if partial and partial != shown and t - last_edit > EDIT_INTERVAL:
+                    try:
+                        await sent.edit_text(partial)
+                    except Exception:
+                        pass  # "message is not modified" / rate limits
+                    shown, last_edit = partial, t
+            final = partial or "…"
+            if final != shown:
+                await sent.edit_text(final)
         except Exception as e:
-            answer = f"Ошибка: {e}. Проверь, запущен ли Ollama и скачана ли модель."
-        await update.message.reply_text(answer)
+            await sent.edit_text(f"Ошибка: {e}. Проверь, запущен ли Ollama и скачана ли модель.")
 
     for name, fn in (
         ("start", start), ("help", help_cmd), ("today", today), ("tomorrow", tomorrow),
@@ -181,6 +224,16 @@ def build_application(deps) -> Application:
         ("search", search), ("contacts", contacts), ("models", models), ("model", model),
     ):
         app.add_handler(CommandHandler(name, fn))
+    app.add_handler(CallbackQueryHandler(on_callback, pattern=r"^snz:"))
     app.add_handler(MessageHandler(filters.Document.ALL, on_document))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
     return app
+
+
+def reminder_keyboard(rid: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([[
+        InlineKeyboardButton("+15м", callback_data=f"snz:{rid}:15"),
+        InlineKeyboardButton("+1ч", callback_data=f"snz:{rid}:60"),
+        InlineKeyboardButton("Завтра", callback_data=f"snz:{rid}:1440"),
+        InlineKeyboardButton("✓", callback_data=f"snz:{rid}:done"),
+    ]])

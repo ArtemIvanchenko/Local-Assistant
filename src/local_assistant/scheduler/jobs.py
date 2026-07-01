@@ -11,6 +11,7 @@ from datetime import time
 from telegram.ext import Application, ContextTypes
 
 from ..config import settings
+from ..telegram.bot import reminder_keyboard
 from ..util import in_quiet_hours, now, tz
 
 
@@ -22,22 +23,42 @@ def _parse_hhmm(s: str) -> time:
 def register(app: Application, deps) -> None:
     jq = app.job_queue
 
-    async def broadcast(ctx: ContextTypes.DEFAULT_TYPE, text: str, respect_quiet=True):
+    def _cap_reached() -> bool:
+        key = "proactive_" + now().strftime("%Y%m%d")
+        return int(deps.db.get_setting(key, "0")) >= settings.max_proactive_per_day
+
+    def _bump_cap() -> None:
+        key = "proactive_" + now().strftime("%Y%m%d")
+        deps.db.set_setting(key, str(int(deps.db.get_setting(key, "0")) + 1))
+
+    async def broadcast(ctx: ContextTypes.DEFAULT_TYPE, text: str,
+                        respect_quiet=True, respect_cap=True):
         if respect_quiet and in_quiet_hours():
             return
+        if respect_cap and _cap_reached():
+            return  # anti-spam: don't exceed MAX_PROACTIVE_PER_DAY
         for uid in settings.owner_ids:
             try:
                 await ctx.bot.send_message(uid, text)
             except Exception:
                 pass
+        if respect_cap:
+            _bump_cap()
 
     async def poll_reminders(ctx: ContextTypes.DEFAULT_TYPE):
+        # Explicit reminders always fire — no quiet-hours / cap suppression.
         rows = deps.db.query(
             "SELECT id, text FROM reminders WHERE status='pending' AND fire_at<=? ",
             (now().isoformat(),),
         )
         for r in rows:
-            await broadcast(ctx, f"⏰ {r['text']}", respect_quiet=False)
+            for uid in settings.owner_ids:
+                try:
+                    await ctx.bot.send_message(
+                        uid, f"⏰ {r['text']}", reply_markup=reminder_keyboard(r["id"])
+                    )
+                except Exception:
+                    pass
             deps.db.execute("UPDATE reminders SET status='sent' WHERE id=?", (r["id"],))
 
     async def morning_digest(ctx: ContextTypes.DEFAULT_TYPE):

@@ -83,3 +83,37 @@ class LlmClient:
 
     async def embed(self, text: str) -> list[float]:
         return await asyncio.to_thread(self._embed_sync, text)
+
+    # ── streaming ────────────────────────────────────────────
+    async def stream_chat(self, messages, model=None, tools=None):
+        """Async-yield Ollama chunks by draining the blocking iterator in a thread.
+
+        High value on the Pi: at 5-8 tok/s the user sees words appear instead of
+        waiting for the whole reply.
+        """
+        model = model or self.main_model
+        loop = asyncio.get_running_loop()
+        queue: asyncio.Queue = asyncio.Queue()
+        _DONE = object()
+
+        def produce():
+            try:
+                for chunk in self._ollama().chat(
+                    model=model, messages=messages, tools=tools,
+                    stream=True, options=self._options(),
+                ):
+                    loop.call_soon_threadsafe(queue.put_nowait, chunk)
+            except Exception as e:  # surfaced to the consumer
+                loop.call_soon_threadsafe(queue.put_nowait, e)
+            finally:
+                loop.call_soon_threadsafe(queue.put_nowait, _DONE)
+
+        task = loop.run_in_executor(None, produce)
+        while True:
+            item = await queue.get()
+            if item is _DONE:
+                break
+            if isinstance(item, Exception):
+                raise item
+            yield item
+        await task

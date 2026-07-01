@@ -1,0 +1,12 @@
+# Encrypted backup of the assistant's memory. Paired with the .timer below.
+# Set BACKUP_PASSPHRASE in an EnvironmentFile the pi user owns (chmod 600), NOT here.
+[Unit]
+Description=Local Assistant encrypted backup
+
+[Service]
+Type=oneshot
+User=pi
+WorkingDirectory=/home/pi/Local-Assistant
+EnvironmentFile=/home/pi/Local-Assistant/.env
+EnvironmentFile=/home/pi/.local-assistant-backup.env
+ExecStart=/home/pi/Local-Assistant/scripts/backup.sh

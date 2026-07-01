@@ -33,6 +33,16 @@ Enable Transparent Hugepages for a prefill boost:
 echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
 ```
 
+Speed knobs that live on the **Ollama server** (not per-request). Add them to the
+Ollama service environment (`sudo systemctl edit ollama`):
+```
+[Service]
+Environment="OLLAMA_KV_CACHE_TYPE=q8_0"        # quantize KV cache → more context fits
+Environment="OLLAMA_SPECULATIVE_DECODE=1"      # draft model speedup (Ollama 5.x)
+Environment="OLLAMA_FLASH_ATTENTION=1"
+```
+Then `ollama pull qwen3:0.6b` so the draft model is available.
+
 ## Project
 
 ```bash
@@ -55,9 +65,12 @@ python -m local_assistant
 ```bash
 sudo cp deploy/systemd/local-assistant.service /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now local-assistant
+# Restart=always in the unit acts as the crash watchdog.
 
-# Encrypted nightly backup (add to crontab):
-BACKUP_PASSPHRASE=... ./scripts/backup.sh
+# Encrypted nightly backup (systemd timer):
+echo 'BACKUP_PASSPHRASE=change-me' > ~/.local-assistant-backup.env && chmod 600 ~/.local-assistant-backup.env
+sudo cp deploy/systemd/local-assistant-backup.{service,timer} /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now local-assistant-backup.timer
 ```
 
 ## Verify
