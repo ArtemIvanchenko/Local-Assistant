@@ -55,7 +55,15 @@ def register(app: Application, deps) -> None:
         except Exception:
             pass  # never let the nightly job crash the service
 
+    async def icloud_sync(ctx: ContextTypes.DEFAULT_TYPE):
+        try:
+            await deps.sync_icloud()
+        except Exception:
+            pass  # transient iCloud/network errors must not kill the job
+
     jq.run_repeating(poll_reminders, interval=30, first=10)
     jq.run_daily(morning_digest, time=_parse_hhmm(settings.morning_digest))
     jq.run_daily(evening_digest, time=_parse_hhmm(settings.evening_digest))
     jq.run_daily(nightly_reflection, time=_parse_hhmm(settings.nightly_reflection))
+    if settings.icloud_enabled:
+        jq.run_repeating(icloud_sync, interval=settings.icloud_sync_minutes * 60, first=15)

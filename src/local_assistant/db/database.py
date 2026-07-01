@@ -51,7 +51,17 @@ class Database:
                         f"CREATE VIRTUAL TABLE IF NOT EXISTS {tbl} "
                         "USING vec0(id INTEGER PRIMARY KEY, embedding float[768])"
                     )
+            self._migrate()
             self._conn.commit()
+
+    def _migrate(self) -> None:
+        """Idempotent column adds (sync provenance with external backends like iCloud)."""
+        for table in ("events", "reminders"):
+            cols = {r["name"] for r in self._conn.execute(f"PRAGMA table_info({table})")}
+            if "source" not in cols:
+                self._conn.execute(f"ALTER TABLE {table} ADD COLUMN source TEXT DEFAULT 'local'")
+            if "ext_id" not in cols:
+                self._conn.execute(f"ALTER TABLE {table} ADD COLUMN ext_id TEXT")
 
     # ── generic helpers ──────────────────────────────────────
     def execute(self, sql: str, params: tuple = ()) -> sqlite3.Cursor:

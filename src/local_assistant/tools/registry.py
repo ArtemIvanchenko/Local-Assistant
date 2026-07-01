@@ -18,6 +18,8 @@ class ToolRegistry:
     def __init__(self, db, memory):
         self.db = db
         self.memory = memory
+        self._ic_cal = None       # lazy iCloud calendar backend
+        self._ic_contacts = None  # lazy iCloud contacts backend
         self._handlers: dict[str, Callable[..., Awaitable[str]]] = {
             "add_reminder": self.add_reminder,
             "list_reminders": self.list_reminders,
@@ -29,7 +31,21 @@ class ToolRegistry:
             "remember": self.remember,
             "search_memory": self.search_memory,
             "web_search": self.web_search,
+            "find_contact": self.find_contact,
         }
+
+    # ── iCloud backends (lazy, optional) ─────────────────────
+    def _icloud_cal(self):
+        if self._ic_cal is None:
+            from ..integrations.icloud import calendar
+            self._ic_cal = calendar()
+        return self._ic_cal
+
+    def _icloud_contacts(self):
+        if self._ic_contacts is None:
+            from ..integrations.icloud import contacts
+            self._ic_contacts = contacts()
+        return self._ic_contacts
 
     # ── dispatch ─────────────────────────────────────────────
     async def call(self, name: str, args: dict[str, Any]) -> str:
@@ -44,11 +60,19 @@ class ToolRegistry:
     # ── reminders ────────────────────────────────────────────
     async def add_reminder(self, text: str, when: str) -> str:
         fire = parse_when(when)
+        ext_id, source, suffix = None, "local", ""
+        if settings.icloud_enabled:
+            try:
+                ext_id = await asyncio.to_thread(self._icloud_cal().add_reminder, text, fire)
+                source = "icloud"
+                suffix = " (synced to iCloud)"
+            except Exception as e:
+                suffix = f" (local only — iCloud error: {e})"
         self.db.execute(
-            "INSERT INTO reminders(text, fire_at) VALUES(?, ?)",
-            (text, fire.isoformat()),
+            "INSERT INTO reminders(text, fire_at, source, ext_id) VALUES(?,?,?,?)",
+            (text, fire.isoformat(), source, ext_id),
         )
-        return f"reminder set for {fire.strftime('%Y-%m-%d %H:%M')}: {text}"
+        return f"reminder set for {fire.strftime('%Y-%m-%d %H:%M')}: {text}{suffix}"
 
     async def list_reminders(self) -> str:
         rows = self.db.query(
@@ -62,12 +86,22 @@ class ToolRegistry:
     async def add_event(self, title: str, start: str, end: str | None = None,
                         notes: str | None = None) -> str:
         s = parse_when(start)
-        e = parse_when(end).isoformat() if end else None
+        e_dt = parse_when(end) if end else None
+        ext_id, source, suffix = None, "local", ""
+        if settings.icloud_enabled:
+            try:
+                ext_id = await asyncio.to_thread(
+                    self._icloud_cal().add_event, title, s, e_dt, notes)
+                source = "icloud"
+                suffix = " (synced to iCloud)"
+            except Exception as e:
+                suffix = f" (local only — iCloud error: {e})"
         self.db.execute(
-            "INSERT INTO events(title, start_ts, end_ts, notes) VALUES(?,?,?,?)",
-            (title, s.isoformat(), e, notes),
+            "INSERT INTO events(title, start_ts, end_ts, notes, source, ext_id) "
+            "VALUES(?,?,?,?,?,?)",
+            (title, s.isoformat(), e_dt.isoformat() if e_dt else None, notes, source, ext_id),
         )
-        return f"event added: {title} @ {s.strftime('%Y-%m-%d %H:%M')}"
+        return f"event added: {title} @ {s.strftime('%Y-%m-%d %H:%M')}{suffix}"
 
     async def list_events(self, day: str | None = None) -> str:
         if day:
@@ -140,6 +174,26 @@ class ToolRegistry:
 
         return await asyncio.to_thread(_search)
 
+    # ── contacts (iCloud CardDAV) ────────────────────────────
+    async def find_contact(self, name: str) -> str:
+        if not settings.icloud_enabled:
+            return "contacts unavailable (iCloud not configured)"
+        try:
+            hits = await asyncio.to_thread(self._icloud_contacts().search, name)
+        except Exception as e:
+            return f"error reading contacts: {e}"
+        if not hits:
+            return f"no contact matching {name!r}"
+        lines = []
+        for h in hits:
+            parts = [h["name"]]
+            if h["phones"]:
+                parts.append("tel: " + ", ".join(h["phones"]))
+            if h["emails"]:
+                parts.append("email: " + ", ".join(h["emails"]))
+            lines.append("• " + " — ".join(parts))
+        return "\n".join(lines)
+
     # ── schemas for Ollama tool-calling ──────────────────────
     def specs(self) -> list[dict]:
         def fn(name, desc, props, required):
@@ -174,4 +228,6 @@ class ToolRegistry:
             fn("remember", "Store a durable fact about the user.", {"content": S}, ["content"]),
             fn("search_memory", "Search the user's memory semantically.", {"query": S}, ["query"]),
             fn("web_search", "Search the web for current information.", {"query": S}, ["query"]),
+            fn("find_contact", "Look up a person in the user's Apple contacts by name.",
+               {"name": S}, ["name"]),
         ]

@@ -35,6 +35,7 @@ nightly batch analysis rather than raw throughput.
 | Profile memory | `MEMORY.md` (markdown, agent-maintained) |
 | Scheduler / proactivity | [APScheduler](https://apscheduler.readthedocs.io) |
 | Private web search | [`ddgs`](https://pypi.org/project/ddgs/) (library, no service) |
+| Apple integration | iCloud CalDAV (calendar + reminders) / CardDAV (contacts) — optional |
 | Tool layer | [MCP](https://modelcontextprotocol.io) |
 | Service mgmt | systemd (+ watchdog) — **Docker-free** |
 
@@ -80,6 +81,14 @@ Model choice is first-class — nothing is hard-coded and **no weights live in t
 The catalogue lives in [`src/local_assistant/llm/models.py`](src/local_assistant/llm/models.py)
 (Qwen3.5-4B, Qwen3-4B-Instruct, Phi-4-mini, Gemma 3, Llama 3.2, …). Any model installed
 in Ollama can be selected, listed or not.
+
+## Apple integration (optional)
+
+Sync with **Apple Calendar, Reminders and Contacts** via iCloud (works from Linux
+using CalDAV/CardDAV + an app-specific password). iCloud becomes the source of truth;
+the local DB caches for offline/fast digests. Set `APPLE_ID` + `APPLE_APP_PASSWORD` in
+`.env` — or leave blank to stay fully local. Full guide:
+[`docs/integrations-apple.md`](docs/integrations-apple.md).
 
 ## Roadmap
 

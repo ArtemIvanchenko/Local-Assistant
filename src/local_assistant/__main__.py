@@ -25,6 +25,7 @@ def _preflight() -> int:
     print(f"  ollama      : {settings.ollama_host}  ->  "
           f"{len(installed)} models installed" if installed else
           f"  ollama      : {settings.ollama_host}  ->  not reachable / no models")
+    print(f"  icloud      : {'on (' + settings.apple_id + ')' if settings.icloud_enabled else 'off (local only)'}")
     print(f"  owners      : {settings.owner_ids or '⚠ none set'}")
     return 0
 

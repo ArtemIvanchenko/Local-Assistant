@@ -41,6 +41,16 @@ class Settings(BaseSettings):
     search_region: str = "ru-ru"
     search_max_results: int = 5
 
+    # Apple / iCloud (CalDAV calendar+reminders, CardDAV contacts).
+    # Use an app-specific password from appleid.apple.com (NOT your Apple ID password).
+    apple_id: str = ""
+    apple_app_password: str = ""
+    icloud_caldav_url: str = "https://caldav.icloud.com/"
+    icloud_carddav_url: str = "https://contacts.icloud.com/"
+    icloud_calendar_name: str = ""   # blank = first calendar that supports events
+    icloud_reminders_list: str = ""  # blank = first list that supports VTODO
+    icloud_sync_minutes: int = 15
+
     # Behaviour
     timezone: str = "Europe/Moscow"
     morning_digest: str = "08:00"
@@ -52,6 +62,10 @@ class Settings(BaseSettings):
     @property
     def owner_ids(self) -> list[int]:
         return [int(x) for x in self.owner_chat_ids.split(",") if x.strip()]
+
+    @property
+    def icloud_enabled(self) -> bool:
+        return bool(self.apple_id and self.apple_app_password)
 
 
 settings = Settings()

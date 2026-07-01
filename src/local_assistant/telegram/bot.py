@@ -59,6 +59,7 @@ def build_application(deps) -> Application:
             "/done <текст> — закрыть задачу\n"
             "/note <текст> — запомнить факт\n"
             "/search <запрос> — поиск по памяти\n"
+            "/contacts <имя> — найти в контактах Apple\n"
             "/models — доступные модели\n"
             "/model <имя> — выбрать основную модель"
         )
@@ -101,6 +102,14 @@ def build_application(deps) -> Application:
         if not await guard(update):
             return
         await update.message.reply_text(await deps.tools.search_memory(query=" ".join(ctx.args)))
+
+    async def contacts(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+        if not await guard(update):
+            return
+        if not ctx.args:
+            await update.message.reply_text("Кого найти? /contacts <имя>")
+            return
+        await update.message.reply_text(await deps.tools.find_contact(name=" ".join(ctx.args)))
 
     # ── model selection ──────────────────────────────────────
     async def models(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -169,7 +178,7 @@ def build_application(deps) -> Application:
     for name, fn in (
         ("start", start), ("help", help_cmd), ("today", today), ("tomorrow", tomorrow),
         ("tasks", tasks), ("add", add), ("done", done), ("note", note),
-        ("search", search), ("models", models), ("model", model),
+        ("search", search), ("contacts", contacts), ("models", models), ("model", model),
     ):
         app.add_handler(CommandHandler(name, fn))
     app.add_handler(MessageHandler(filters.Document.ALL, on_document))

@@ -13,6 +13,7 @@ hardware tuning and polish, done when the Pi is set up.
 | 5 | Scheduler: reminder firing; morning/evening digest | ✅ done |
 | 6 | Proactivity/patterns: nightly reflection | ✅ basic |
 | 7 | Capabilities: web search (`ddgs`), document ingestion (RAG) | ✅ done |
+| 7b | Apple: iCloud Calendar + Reminders (CalDAV) + Contacts (CardDAV) | ✅ done |
 | 8 | UX: slash commands, model selection; inline buttons/snooze/streaming | ◑ commands done |
 | 9 | Polish/reliability: speculative decoding, anti-spam, backups, encryption, watchdog, eval+logs | ◑ partial |
 | 10 | (Later) Voice (faster-whisper or Gemma 4 E4B audio), AI HAT+ 2 | ☐ later |
