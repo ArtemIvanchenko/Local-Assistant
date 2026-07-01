@@ -44,7 +44,9 @@ See the full design rationale, model comparison, and inference-speedup notes in
 
 ## Quick start (Raspberry Pi 5)
 
-> Detailed setup lives in [`docs/setup-pi.md`](docs/setup-pi.md). Short version:
+> Setting up with a coding agent on the Pi? Hand it
+> [`docs/pi-agent-runbook.md`](docs/pi-agent-runbook.md) — a step-by-step runbook with
+> verification gates. Manual setup lives in [`docs/setup-pi.md`](docs/setup-pi.md). Short version:
 
 ```bash
 # 1. System deps + Ollama (use the latest — Qwen3.5 needs recent llama.cpp ops)
